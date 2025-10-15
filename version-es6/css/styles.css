@@ -243,3 +243,57 @@ footer {
     grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   }
 }
+
+/* ---------- ACCORDION ---------- */
+.accordion-container {
+  margin-top: 2em;
+  background: var(--color-card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-soft);
+  padding: 1em;
+}
+
+.accordion-item + .accordion-item {
+  border-top: 1px solid #ddd;
+}
+
+.accordion-header {
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-size: 1.1rem;
+  font-weight: 600;
+  padding: 0.8em 0;
+  color: var(--color-primary-dark);
+  cursor: pointer;
+  transition: var(--transition);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.accordion-header::after {
+  content: "▼";
+  font-size: 0.9rem;
+  transition: var(--transition);
+}
+
+.accordion-header.active::after {
+  transform: rotate(180deg);
+}
+
+.accordion-content {
+  display: none;
+  padding: 0.5em 0 1em 0;
+  color: var(--color-text-dark);
+  line-height: 1.5;
+}
+
+[data-theme="dark"] .accordion-content {
+  color: var(--color-text-light);
+}
+
+.accordion-content p {
+  margin: 0.4em 0;
+}
