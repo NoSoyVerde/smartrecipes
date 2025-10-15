@@ -1,0 +1,49 @@
+body {
+  font-family: system-ui, sans-serif;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  transition: background 0.3s, color 0.3s;
+}
+
+:root {
+  --bg: #fff;
+  --text: #222;
+}
+
+[data-theme="dark"] {
+  --bg: #111;
+  --text: #eee;
+}
+
+header, footer {
+  background: #4CAF50;
+  color: white;
+  padding: 1em;
+}
+
+nav a {
+  margin: 0 0.5em;
+  color: white;
+  text-decoration: none;
+}
+
+.nav-link.active {
+  text-decoration: underline;
+}
+
+main {
+  padding: 1em;
+}
+
+.recipe {
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  margin: 0.5em 0;
+  padding: 1em;
+}
+
+button {
+  cursor: pointer;
+  border-radius: 5px;
+}
