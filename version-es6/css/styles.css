@@ -1,5 +1,5 @@
 /* ===========================
-   🌿 SMARTRECIPES - STYLES
+   🌿 SMARTRECIPES - STYLES EXTENDIDO
    =========================== */
 
 /* ---------- VARIABLES ---------- */
@@ -151,6 +151,10 @@ main {
   box-shadow: var(--shadow-soft);
 }
 
+.recipe p {
+  margin: 0.3em 0;
+}
+
 /* ---------- BOTONES ---------- */
 button {
   background: var(--color-primary);
@@ -219,6 +223,36 @@ footer {
   box-shadow: var(--shadow-soft);
 }
 
+/* ---------- BARRA DE BÚSQUEDA EN NAV ---------- */
+nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5em;
+  align-items: center;
+}
+
+#search-input {
+  flex: 0 0 180px;
+  padding: 0.4em;
+  border-radius: var(--radius);
+  border: 1px solid #ccc;
+}
+
+#search-btn {
+  padding: 0.4em 0.8em;
+  border-radius: var(--radius);
+  background: var(--color-primary);
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+#search-btn:hover {
+  background: var(--color-primary-dark);
+}
+
+
+
 /* ---------- RESPONSIVE DESIGN ---------- */
 @media (max-width: 768px) {
   header h1 {
@@ -244,7 +278,7 @@ footer {
   }
 }
 
-/* ---------- ACCORDION ---------- */
+/* ---------- ACORDEÓN ---------- */
 .accordion-container {
   margin-top: 2em;
   background: var(--color-card-bg);
