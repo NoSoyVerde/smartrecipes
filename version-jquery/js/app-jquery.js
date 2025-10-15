@@ -62,8 +62,8 @@ $(document).ready(function() {
       e.preventDefault();
       const email = $("#email").val();
       const phone = $("#phone").val();
-      const emailRe = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;
-      const phoneRe = /^(?:\\+34)?\\s?\\d{9}$/;
+     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      const phoneRe = /^(?:\+34)?\s?\d{9}$/;
       if (!emailRe.test(email)) return alert("Email no válido");
       if (phone && !phoneRe.test(phone)) return alert("Teléfono no válido");
       alert("Formulario enviado correctamente ✅");
