@@ -61,6 +61,8 @@ export async function fetchRecipes(query = null, limit = 20) {
         : [];
 
       const seenIds = new Set();
+      const batchSize = 6; // número de requests en paralelo para detalles
+
       for (const category of categories) {
         if (recipes.length >= limit) break;
 
@@ -68,16 +70,29 @@ export async function fetchRecipes(query = null, limit = 20) {
           const catData = await apiFetch(`/filter.php?c=${encodeURIComponent(category)}`);
           if (!Array.isArray(catData.meals)) continue;
 
-          for (const meal of catData.meals) {
-            if (recipes.length >= limit) break;
-            if (!seenIds.has(meal.idMeal)) {
-              seenIds.add(meal.idMeal);
-              const fullMeal = await fetchRecipeById(meal.idMeal);
-              if (fullMeal) recipes.push(fullMeal);
+          // Filtrar y limitar ids únicos
+          const ids = catData.meals
+            .map(m => m.idMeal)
+            .filter(id => !seenIds.has(id))
+            .slice(0, Math.max(0, limit - recipes.length));
+
+          ids.forEach(id => seenIds.add(id));
+
+          // Procesar en lotes con concurrency limitada
+          for (let i = 0; i < ids.length; i += batchSize) {
+            const chunk = ids.slice(i, i + batchSize);
+            const promises = chunk.map(id => fetchRecipeById(id).catch(err => null));
+            const results = await Promise.all(promises);
+            for (const fullMeal of results) {
+              if (fullMeal) {
+                recipes.push(fullMeal);
+                if (recipes.length >= limit) break;
+              }
             }
+            if (recipes.length >= limit) break;
           }
         } catch (err) {
-          console.warn(`Error cargando categoría ${category}:`, err);
+          console.warn(`Error cargando categor\u00eda ${category}:`, err);
         }
       }
     } catch (err) {

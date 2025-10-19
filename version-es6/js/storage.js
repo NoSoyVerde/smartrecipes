@@ -65,31 +65,21 @@ export function isFavorite(idMeal) {
  */
 export function syncFavoriteButtons(recipes = []) {
   const buttons = document.querySelectorAll(".fav-btn");
+  // Actualiza estado visual (texto, disabled) de botones .fav-btn según localStorage
   buttons.forEach(btn => {
     const recipeId = btn.dataset.id;
+    if (!recipeId) return;
 
     if (isFavorite(recipeId)) {
-      btn.textContent = "✅ Favorito";
+      btn.textContent = "\u2705 Favorito";
       btn.classList.add("disabled");
       btn.disabled = true;
+      btn.setAttribute('aria-pressed', 'true');
     } else {
-      btn.textContent = "❤️ Añadir a favoritos";
+      btn.textContent = "\u2764\ufe0f Añadir a favoritos";
       btn.classList.remove("disabled");
       btn.disabled = false;
-    }
-
-    if (!btn.dataset.listenerAdded) {
-      btn.addEventListener("click", () => {
-        const id = btn.dataset.id;
-        const recipe = recipes.find(r => r.idMeal === id);
-        if (!recipe) return;
-
-        if (isFavorite(id)) removeFavorite(id);
-        else saveFavorite(recipe);
-
-        syncFavoriteButtons(recipes);
-      });
-      btn.dataset.listenerAdded = true;
+      btn.setAttribute('aria-pressed', 'false');
     }
   });
 }

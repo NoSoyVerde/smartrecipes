@@ -17,6 +17,7 @@ export function renderRecipes(list, containerId = "app") {
     return;
   }
 
+  // Construir HTML con lazy-loading y atributos accesibles
   container.innerHTML = list.map(r => {
     // Obtener ingredientes y cantidades
     let ingredients = "";
@@ -31,49 +32,58 @@ export function renderRecipes(list, containerId = "app") {
     return `
     <div class="recipe">
       <h3>${r.strMeal}</h3>
-      <img src="${r.strMealThumb}" alt="${r.strMeal}" width="150"/>
+      <img loading="lazy" src="${r.strMealThumb}" alt="Imagen de ${r.strMeal}" width="150"/>
       <p><strong>Categoría:</strong> ${r.strCategory || "Desconocida"}</p>
       <p><strong>Área:</strong> ${r.strArea || "Desconocida"}</p>
       <p class="instructions-preview">${r.strInstructions ? r.strInstructions.slice(0, 100) + "..." : "No disponible"}</p>
-      <button class="read-more-btn">Leer más</button>
-      <ul class="ingredients-list" style="display:none;">${ingredients}</ul>
-      <button data-id="${r.idMeal}" class="fav-btn">❤️ Añadir a favoritos</button>
+      <button class="read-more-btn" data-id="${r.idMeal}" aria-expanded="false">Leer más</button>
+      <ul class="ingredients-list" style="display:none;" aria-hidden="true">${ingredients}</ul>
+      <button data-id="${r.idMeal}" class="fav-btn" aria-pressed="false">❤️ Añadir a favoritos</button>
     </div>
     `;
   }).join("");
 
-  // Botón favoritos
+  // Favoritos: delegado por data-id y lista de recetas en closure
   container.querySelectorAll(".fav-btn").forEach(btn => {
     btn.addEventListener("click", e => {
-      const recipe = list.find(r => r.idMeal === e.target.dataset.id);
-      if (recipe) {
-        saveFavorite(recipe);
-        e.target.textContent = "✅ Favorito añadido";
-        e.target.disabled = true;
-        e.target.classList.add("disabled");
-        showToast(`Receta "${recipe.strMeal}" añadida a favoritos ✅`);
-      }
+      const id = e.currentTarget.dataset.id;
+      const recipe = list.find(r => r.idMeal === id);
+      if (!recipe) return;
+
+      saveFavorite(recipe);
+      e.currentTarget.textContent = "✅ Favorito añadido";
+      e.currentTarget.disabled = true;
+      e.currentTarget.classList.add("disabled");
+      e.currentTarget.setAttribute('aria-pressed', 'true');
+      showToast(`Receta "${recipe.strMeal}" añadida a favoritos ✅`);
     });
   });
 
-  // Botón leer más
+  // Read more toggle: usar data-id para localizar receta
   container.querySelectorAll(".read-more-btn").forEach(btn => {
     btn.addEventListener("click", e => {
-      const parent = e.target.closest(".recipe");
-      const fullInstructions = list.find(r => r.strMeal === parent.querySelector("h3").textContent).strInstructions;
-      const instructionsEl = parent.querySelector(".instructions-preview");
-      if (instructionsEl.textContent.length > 120) {
-        instructionsEl.textContent = fullInstructions;
-        e.target.textContent = "Leer menos";
-      } else {
-        instructionsEl.textContent = fullInstructions.slice(0,100) + "...";
-        e.target.textContent = "Leer más";
-      }
+      const id = e.currentTarget.dataset.id;
+      const recipe = list.find(r => r.idMeal === id);
+      if (!recipe) return;
 
-      // Mostrar u ocultar ingredientes
+      const parent = e.currentTarget.closest(".recipe");
+      const instructionsEl = parent.querySelector(".instructions-preview");
       const ingList = parent.querySelector(".ingredients-list");
-      if (ingList.style.display === "none") ingList.style.display = "block";
-      else ingList.style.display = "none";
+
+      const expanded = e.currentTarget.getAttribute('aria-expanded') === 'true';
+      if (expanded) {
+        instructionsEl.textContent = recipe.strInstructions ? recipe.strInstructions.slice(0,100) + "..." : "No disponible";
+        e.currentTarget.textContent = "Leer más";
+        e.currentTarget.setAttribute('aria-expanded', 'false');
+        ingList.style.display = 'none';
+        ingList.setAttribute('aria-hidden', 'true');
+      } else {
+        instructionsEl.textContent = recipe.strInstructions || "No disponible";
+        e.currentTarget.textContent = "Leer menos";
+        e.currentTarget.setAttribute('aria-expanded', 'true');
+        ingList.style.display = 'block';
+        ingList.setAttribute('aria-hidden', 'false');
+      }
     });
   });
 }
@@ -120,10 +130,7 @@ export function renderFavorites() {
   });
 }
 
-/**
- * Renderiza el formulario de contacto con select de país y consejos objetivos
- */
-export async function renderContactForm() {
+export function renderContactForm() {
   const app = document.getElementById("app");
   app.innerHTML = `
     <h2>Contacto</h2>
@@ -131,10 +138,7 @@ export async function renderContactForm() {
       <input type="text" id="name" placeholder="Nombre" required><br>
       <input type="email" id="email" placeholder="Email" required><br>
 
-      <select id="country-select" required>
-        <option value="">Selecciona tu país</option>
-      </select>
-      <input type="tel" id="phone" placeholder="Número de teléfono"><br>
+      <input type="tel" id="phone" placeholder="Número con prefijo, ej: +34 612345678" required><br>
 
       <textarea id="msg" placeholder="Mensaje"></textarea><br>
       <button>Enviar</button>
@@ -144,23 +148,7 @@ export async function renderContactForm() {
 
   const form = document.getElementById("contact-form");
   const feedback = document.getElementById("contact-feedback");
-  const countrySelect = document.getElementById("country-select");
   const phoneInput = document.getElementById("phone");
-
-  // Cargar países y prefijos desde la API
-  try {
-    const res = await fetch("https://restcountries.com/v3.1/all");
-    const data = await res.json();
-    data.sort((a,b)=>a.name.common.localeCompare(b.name.common));
-    data.forEach(c => {
-      if(c.idd?.root && c.idd?.suffixes?.length){
-        const code = `${c.idd.root}${c.idd.suffixes[0]}`;
-        countrySelect.innerHTML += `<option value="${code}">+${code} ${c.name.common}</option>`;
-      }
-    });
-  } catch (err) {
-    console.error("Error cargando países:", err);
-  }
 
   const cookingTips = [
     "Usa ingredientes frescos siempre que sea posible.",
@@ -177,24 +165,22 @@ export async function renderContactForm() {
     e.preventDefault();
     const name = form.name.value.trim();
     const email = form.email.value.trim();
-    const countryCode = countrySelect.value;
     const phone = phoneInput.value.trim();
     const msg = form.msg.value.trim();
 
     const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    const phoneRe = /^\d{6,15}$/;
+    // Validar formato: +prefijo (1-3 dígitos) espacio número de 6-15 dígitos
+    const phoneRe = /^\+([1-9]\d{0,2})\s\d{6,15}$/;
 
     if (!emailRe.test(email)) return showToast("Email no válido ❌");
-    if (!countryCode) return showToast("Selecciona un país ✅");
-    if (!phoneRe.test(phone)) return showToast("Número no válido ❌");
+    if (!phoneRe.test(phone)) return showToast("Número no válido ❌ (ej: +34 612345678)");
 
-    const fullPhone = `+${countryCode} ${phone}`;
     const randomTip = cookingTips[Math.floor(Math.random() * cookingTips.length)];
 
     feedback.innerHTML = `
       <p>¡Gracias, <strong>${name}</strong>!</p>
       <p>Hemos recibido tu mensaje: "<em>${msg || "No escribiste nada 😅"}</em>"</p>
-      <p>Te contactaremos en <strong>${email}</strong> o al número <strong>${fullPhone}</strong>.</p>
+      <p>Te contactaremos en <strong>${email}</strong> o al número <strong>${phone}</strong>.</p>
       <p><strong>Consejo de cocina:</strong> ${randomTip}</p>
     `;
 

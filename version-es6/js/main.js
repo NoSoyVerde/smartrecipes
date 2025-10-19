@@ -1,6 +1,7 @@
-import { fetchRecipes } from "./api.js";
+import { fetchRecipes, fetchByCategory, fetchCategories } from "./api.js";
 import { renderRecipes, renderFavorites, renderContactForm } from "./ui.js";
 import { setTheme, showLoader } from "./utils.js";
+import { syncFavoriteButtons } from "./storage.js";
 
 setTheme();
 
@@ -27,28 +28,55 @@ async function loadHome() {
     document.querySelector("nav").appendChild(categorySelect);
   }
 
-  const categories = ["Beef", "Chicken", "Dessert", "Lamb", "Miscellaneous", "Pasta", "Pork", "Seafood", "Side", "Starter", "Vegan", "Vegetarian", "Breakfast", "Goat"];
-  categories.forEach(cat => {
-    if (!Array.from(categorySelect.options).some(o => o.value === cat)) {
-      categorySelect.innerHTML += `<option value="${cat}">${cat}</option>`;
-    }
-  });
+  // Poblar select de categorías desde la API (mejor motor de búsqueda por categoría)
+  try {
+    const cats = await fetchCategories();
+    cats.forEach(cat => {
+      if (!Array.from(categorySelect.options).some(o => o.value === cat)) {
+        categorySelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+      }
+    });
+  } catch (err) {
+    // Fallback a lista local si la API falla
+    const fallback = ["Beef", "Chicken", "Dessert", "Lamb", "Miscellaneous", "Pasta", "Pork", "Seafood", "Side", "Starter", "Vegan", "Vegetarian", "Breakfast", "Goat"];
+    fallback.forEach(cat => {
+      if (!Array.from(categorySelect.options).some(o => o.value === cat)) {
+        categorySelect.innerHTML += `<option value="${cat}">${cat}</option>`;
+      }
+    });
+  }
 
-  async function loadRecipes(query = null, category = null) {
+  // Paginación simple: tamaño de página y límite actual
+  const PAGE_SIZE = 24;
+  let currentLimit = PAGE_SIZE;
+  let currentQuery = null;
+  let currentCategory = null;
+
+  async function loadRecipes(query = null, category = null, limit = currentLimit) {
     showLoader("recipes-container");
     try {
-      let recipes = await fetchRecipes(query);
-      if (category) recipes = recipes.filter(r => r.strCategory === category);
+      let recipes = [];
+      if (category) {
+        // Usar endpoint específico por categoría (mejor y más rápido)
+        recipes = await fetchByCategory(category, limit);
+      } else {
+        recipes = await fetchRecipes(query, limit);
+      }
+
       renderRecipes(recipes, "recipes-container");
+      // Sincronizar estado de botones favoritos según localStorage
+      syncFavoriteButtons(recipes);
     } catch (err) {
       recipesContainer.innerHTML = "<p>Error cargando recetas 😔</p>";
       console.error(err);
     }
   }
 
+  // Mantener estado y reiniciar límite cuando el usuario cambia filtros
   categorySelect.addEventListener("change", e => {
-    const selectedCategory = e.target.value || null;
-    loadRecipes(null, selectedCategory);
+    currentCategory = e.target.value || null;
+    currentLimit = PAGE_SIZE;
+    loadRecipes(currentQuery, currentCategory, currentLimit);
   });
 
   const searchBtn = document.getElementById("search-btn");
@@ -60,9 +88,10 @@ async function loadHome() {
   categorySelect.style.display = "inline-block";
 
   const handleSearch = () => {
-    const query = searchInput.value.trim();
-    const category = categorySelect.value || null;
-    loadRecipes(query, category);
+    currentQuery = searchInput.value.trim() || null;
+    currentCategory = categorySelect.value || null;
+    currentLimit = PAGE_SIZE;
+    loadRecipes(currentQuery, currentCategory, currentLimit);
   };
 
   searchBtn.addEventListener("click", handleSearch);
@@ -74,7 +103,27 @@ async function loadHome() {
   });
 
   // Cargar recetas aleatorias al inicio
-  loadRecipes();
+  // Crear botón 'Cargar más' que incrementa el límite y vuelve a cargar
+  let loadMoreWrapper = document.getElementById("load-more-wrapper");
+  if (!loadMoreWrapper) {
+    loadMoreWrapper = document.createElement("div");
+    loadMoreWrapper.id = "load-more-wrapper";
+    loadMoreWrapper.style.textAlign = "center";
+    loadMoreWrapper.style.margin = "1.2em 0";
+    const btn = document.createElement("button");
+    btn.id = "load-more-btn";
+    btn.textContent = "Cargar más recetas";
+    loadMoreWrapper.appendChild(btn);
+    app.appendChild(loadMoreWrapper);
+  }
+
+  document.getElementById("load-more-btn").addEventListener("click", () => {
+    currentLimit += PAGE_SIZE;
+    loadRecipes(currentQuery, currentCategory, currentLimit);
+  });
+
+  // Carga inicial con más resultados por defecto
+  loadRecipes(null, null, currentLimit);
 }
 
 function router() {
