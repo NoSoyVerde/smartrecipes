@@ -14,6 +14,9 @@
     <a href="#favorites" class="nav-link">Favoritos</a>
     <a href="#contact" class="nav-link">Contacto</a>
     <input type="text" id="search-input" placeholder="Buscar comida...">
+    <select id="category-select" style="display:none;">
+      <option value="">Todas las categorías</option>
+    </select>
     <button id="search-btn">Buscar 🔍</button>
     <button id="theme-toggle">🌙</button>
   </nav>
@@ -26,6 +29,8 @@
 <footer>
   <p>© 2025 SmartRecipes - Proyecto DAW</p>
 </footer>
+
+<div class="toast"></div>
 
 <script type="module" src="js/api.js"></script>
 <script type="module" src="js/storage.js"></script>

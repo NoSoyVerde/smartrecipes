@@ -1,12 +1,17 @@
 /**
+ * storage.js - Manejo de favoritos en localStorage con sincronización de UI
+ */
+
+/**
  * Obtiene la lista de favoritos desde localStorage
  * @returns {Array} - array de recetas favoritas
  */
 export function getFavorites() {
   try {
-    return JSON.parse(localStorage.getItem("favorites")) || [];
-  } catch {
-    console.warn("Error leyendo favoritos desde localStorage");
+    const favs = JSON.parse(localStorage.getItem("favorites"));
+    return Array.isArray(favs) ? favs : [];
+  } catch (err) {
+    console.warn("Error leyendo favoritos desde localStorage:", err);
     return [];
   }
 }
@@ -18,9 +23,14 @@ export function getFavorites() {
 export function saveFavorite(recipe) {
   if (!recipe || !recipe.idMeal) return;
   const favs = getFavorites();
-  if (!favs.find(f => f.idMeal === recipe.idMeal)) {
+  if (!favs.some(f => f.idMeal === recipe.idMeal)) {
     favs.push(recipe);
-    localStorage.setItem("favorites", JSON.stringify(favs));
+    try {
+      localStorage.setItem("favorites", JSON.stringify(favs));
+      syncFavoriteButtons([recipe]);
+    } catch (err) {
+      console.error("Error guardando favorito en localStorage:", err);
+    }
   }
 }
 
@@ -31,5 +41,67 @@ export function saveFavorite(recipe) {
 export function removeFavorite(idMeal) {
   if (!idMeal) return;
   const favs = getFavorites().filter(r => r.idMeal !== idMeal);
-  localStorage.setItem("favorites", JSON.stringify(favs));
+  try {
+    localStorage.setItem("favorites", JSON.stringify(favs));
+    syncFavoriteButtons([]);
+  } catch (err) {
+    console.error("Error eliminando favorito en localStorage:", err);
+  }
+}
+
+/**
+ * Comprueba si una receta ya está en favoritos
+ * @param {string} idMeal
+ * @returns {boolean}
+ */
+export function isFavorite(idMeal) {
+  if (!idMeal) return false;
+  return getFavorites().some(r => r.idMeal === idMeal);
+}
+
+/**
+ * Sincroniza botones de favoritos en la UI
+ * @param {Array} recipes - lista de recetas visibles
+ */
+export function syncFavoriteButtons(recipes = []) {
+  const buttons = document.querySelectorAll(".fav-btn");
+  buttons.forEach(btn => {
+    const recipeId = btn.dataset.id;
+
+    if (isFavorite(recipeId)) {
+      btn.textContent = "✅ Favorito";
+      btn.classList.add("disabled");
+      btn.disabled = true;
+    } else {
+      btn.textContent = "❤️ Añadir a favoritos";
+      btn.classList.remove("disabled");
+      btn.disabled = false;
+    }
+
+    if (!btn.dataset.listenerAdded) {
+      btn.addEventListener("click", () => {
+        const id = btn.dataset.id;
+        const recipe = recipes.find(r => r.idMeal === id);
+        if (!recipe) return;
+
+        if (isFavorite(id)) removeFavorite(id);
+        else saveFavorite(recipe);
+
+        syncFavoriteButtons(recipes);
+      });
+      btn.dataset.listenerAdded = true;
+    }
+  });
+}
+
+/**
+ * Limpia todos los favoritos
+ */
+export function clearFavorites() {
+  try {
+    localStorage.removeItem("favorites");
+    syncFavoriteButtons([]);
+  } catch (err) {
+    console.error("Error limpiando favoritos:", err);
+  }
 }
