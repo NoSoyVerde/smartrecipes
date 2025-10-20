@@ -11,40 +11,133 @@
     <header>
         <h1>Buscador de Películas</h1>
     </header>
+    <div class="header-actions" style="text-align:center; margin-top:.5rem;">
+        <button id="toggle-search" class="btn-secondary" aria-expanded="true">Ocultar búsqueda</button>
+    </div>
 
     <main>
-        <section id="search-section">
-            <form id="movie-form" class="card">
+        <!-- Formulario de usuario (experiencia personalizada) -->
+        <section id="user-section" class="card">
+            <form id="user-form" aria-labelledby="user-title">
+                <h3 id="user-title">Configura tu experiencia</h3>
                 <div class="form-row">
-                    <input type="text" id="movie-input" placeholder="Escribe el título de una película" required aria-label="Título">
-                    <button type="submit" class="btn-primary">Buscar</button>
+                    <input type="text" id="user-name" placeholder="Tu nombre" aria-label="Nombre">
+                    <input type="text" id="user-genre" placeholder="Género favorito" aria-label="Género">
+                    <input type="text" id="user-platform" placeholder="Plataforma favorita (opcional)" aria-label="Plataforma">
                 </div>
                 <div class="form-actions">
-                    <button type="button" id="toggle-advanced" class="btn-link">Búsqueda avanzada ▾</button>
+                    <button type="submit" class="btn-primary">Guardar</button>
                 </div>
-                <div id="advanced-form" class="advanced card hidden">
-                    <label>Año: <input type="number" id="filter-year" min="1900" max="2100" placeholder="Ej: 2019"></label>
-                    <label>Rating mínimo: <input type="number" id="filter-rating" min="0" max="10" step="0.1" placeholder="Ej: 7.5"></label>
+                <p id="user-msg" class="small" aria-live="polite"></p>
+            </form>
+        </section>
+
+        <!-- Buscador de películas -->
+        <section id="search-section">
+            <form id="movie-form" class="card" aria-labelledby="search-label">
+                <div class="form-row">
+                    <label id="search-label" for="movie-input" class="sr-only">Título de película</label>
+                    <input type="text" id="movie-input" placeholder="Escribe el título de una película" required aria-describedby="search-help" aria-controls="movie-list">
+                    <button type="submit" class="btn-primary">Buscar</button>
+                </div>
+                <p id="search-help" class="small">Presiona Enter para buscar. Usa Tab para navegar entre resultados.</p>
+                <div class="form-actions">
+                    <button type="button" id="toggle-advanced" class="btn-link" aria-expanded="false" aria-controls="advanced-form">Búsqueda avanzada ▾</button>
+                </div>
+                <div id="advanced-form" class="advanced card hidden" aria-hidden="true">
+                    <div class="form-row">
+                        <div style="flex:1">
+                            <label for="filter-year">Año:</label>
+                            <input type="number" id="filter-year" min="1900" max="2100" placeholder="Ej: 2019">
+                        </div>
+                        <div style="flex:1">
+                            <label for="filter-year-to">Año (hasta):</label>
+                            <input type="number" id="filter-year-to" min="1900" max="2100" placeholder="Ej: 2022">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:.5rem;">
+                        <input type="text" id="filter-genre" placeholder="Género (ej: Comedy)" aria-label="Género búsqueda">
+                        <select id="filter-type" aria-label="Tipo">
+                            <option value="movie">Película</option>
+                            <option value="series">Serie</option>
+                        </select>
+                    </div>
                 </div>
             </form>
-            <p id="error-msg" class="error" aria-live="polite"></p>
-            <div id="spinner" class="spinner hidden" aria-hidden="true"></div>
+            <p id="error-msg" class="error" role="status" aria-live="polite"></p>
+            <div id="spinner" class="spinner hidden" role="status" aria-hidden="true" aria-live="polite"></div>
         </section>
 
+        <!-- Resultados -->
         <section id="results-section">
-            <ul id="movie-list"></ul>
+            <ul id="movie-list" class="movie-grid" role="list" aria-live="polite" aria-busy="false"></ul>
+            <p id="no-results" class="small hidden">No se encontraron resultados.</p>
         </section>
 
+        <!-- Detalles -->
         <section id="details-section">
             <div id="movie-details"></div>
+        </section>
+
+        <!-- Tabs: Sugerencias / Juego -->
+        <section id="tools-section" class="card">
+            <div role="tablist" aria-label="Herramientas" id="tools-tabs">
+                <button role="tab" aria-selected="true" aria-controls="panel-feedback" id="tab-feedback" class="tab-btn">Sugerencias</button>
+                <button role="tab" aria-selected="false" aria-controls="panel-game" id="tab-game" class="tab-btn">Juego</button>
+            </div>
+
+            <!-- Panel Sugerencias -->
+            <div id="panel-feedback" role="tabpanel" tabindex="0" aria-labelledby="tab-feedback">
+                <form id="feedback-form" class="card" aria-labelledby="feedback-title">
+                    <h3 id="feedback-title">Enviar sugerencia</h3>
+                    <div class="form-row">
+                        <input type="text" id="fb-name" placeholder="Tu nombre" required aria-label="Nombre">
+                        <input type="email" id="fb-email" placeholder="Tu correo (opcional)" aria-label="Correo">
+                    </div>
+                    <div>
+                        <textarea id="fb-text" rows="4" placeholder="Escribe tu sugerencia o comentario" required aria-label="Sugerencia"></textarea>
+                    </div>
+                    <div class="form-actions">
+                        <button type="submit" class="btn-primary">Enviar</button>
+                        <button type="button" id="fb-clear" class="btn-link">Limpiar</button>
+                    </div>
+                    <p id="fb-msg" class="small" aria-live="polite"></p>
+                </form>
+            </div>
+
+            <!-- Panel Juego -->
+            <div id="panel-game" role="tabpanel" tabindex="0" aria-labelledby="tab-game" hidden>
+                <div>
+                    <h3>Juego: Adivina el año</h3>
+                    <p class="small">Adivina el año de lanzamiento de una película. Usa una película de los resultados o carga una nueva por título.</p>
+                    <div class="form-row">
+                        <input type="text" id="game-movie-input" placeholder="Título para el juego" aria-label="Título juego">
+                        <button type="button" id="game-load" class="btn-primary">Cargar</button>
+                    </div>
+                    <div id="game-card" class="hidden">
+                        <p id="game-prompt" class="small"></p>
+                        <div class="form-row">
+                            <input type="number" id="game-guess" placeholder="Año (ej: 1999)" aria-label="Adivina año">
+                            <button type="button" id="game-submit" class="btn-primary">Probar</button>
+                        </div>
+                        <p id="game-feedback" class="small"></p>
+                        <div class="form-actions">
+                            <button type="button" id="game-next" class="btn-link">Siguiente</button>
+                            <button type="button" id="game-reset" class="btn-link">Reiniciar</button>
+                        </div>
+                        <p id="game-score" class="small">Puntuación: <span id="game-score-val">0</span></p>
+                    </div>
+                </div>
+            </div>
         </section>
     </main>
 
     <footer>
         <p>&copy; 2025 SmartRecipes - SPAs</p>
-        <p class="small">Entregas: <a href="jquery/index.html">jQuery SPA</a> — <a href="es6/index.html">ES6 SPA</a></p>
     </footer>
 
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
     <script src="js/helpers.js"></script>
     <script src="js/app.js"></script>
 </body>

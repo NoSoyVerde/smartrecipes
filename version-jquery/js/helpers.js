@@ -1,17 +1,39 @@
-// Helpers compartidos
-// validarTitulo: admite letras (incluidas tildes), números, espacios y puntuación común hasta 100 caracteres
-function validarTitulo(titulo) {
-    const regex = /^[\p{L}0-9\s:\-\'.,()]{1,100}$/u;
-    return regex.test(titulo);
-}
+// helpers.js
+// Utilities encapsulados en el espacio de nombres `SR.helpers`.
 
-// crearElemento: atajo para crear elemento jQuery con clases y texto
-function crearElemento(tag, clases = "", texto = "") {
-    const $el = $('<' + tag + '>');
-    if (clases) $el.addClass(clases);
-    if (texto) $el.text(texto);
-    return $el;
-}
+(function(global, $){
+    'use strict';
 
-// Exportar utilidades a window para depuración manual
-window._helpers = { validarTitulo, crearElemento };
+    const helpers = {};
+
+    /**
+     * Validar título de película
+     * Solo permite letras, números, espacios y algunos caracteres comunes.
+     * Longitud máxima: 100 caracteres.
+     * @param {string} titulo
+     * @returns {boolean}
+     */
+    helpers.validarTitulo = function(titulo) {
+        const regex = /^[A-Za-z0-9\s:\-\'.,()]{1,100}$/;
+        return regex.test(titulo);
+    };
+
+    /**
+     * Crear un elemento jQuery con clases y texto
+     * @param {string} tag - Nombre del tag HTML
+     * @param {string} clases - Clases a añadir
+     * @param {string} texto - Texto a incluir
+     * @returns {jQuery}
+     */
+    helpers.crearElemento = function(tag, clases = '', texto = '') {
+        const $el = $('<' + tag + '>');
+        if (clases) $el.addClass(clases);
+        if (texto) $el.text(texto);
+        return $el;
+    };
+
+    // Exponer helpers en el espacio de nombres global SR
+    global.SR = global.SR || {};
+    global.SR.helpers = Object.assign(global.SR.helpers || {}, helpers);
+
+})(window, window.jQuery);
