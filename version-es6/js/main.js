@@ -63,6 +63,7 @@ async function loadHome() {
         recipes = await fetchRecipes(query, limit);
       }
 
+      // Keep the original order provided by the API for a consistent, predictable layout
       renderRecipes(recipes, "recipes-container");
       // Sincronizar estado de botones favoritos según localStorage
       syncFavoriteButtons(recipes);
@@ -78,6 +79,8 @@ async function loadHome() {
     currentLimit = PAGE_SIZE;
     loadRecipes(currentQuery, currentCategory, currentLimit);
   });
+
+  // Sorting control removed to keep layout stable and ordered
 
   const searchBtn = document.getElementById("search-btn");
   const searchInput = document.getElementById("search-input");

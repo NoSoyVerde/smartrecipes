@@ -1,0 +1,6 @@
+# Ignore local config and OS artifacts
+version-jquery/js/config.js
+node_modules/
+*.log
+.DS_Store
+/.vscode/

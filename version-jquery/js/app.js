@@ -1,7 +1,9 @@
 // js/app.js
 $(document).ready(function () {
-    // API key (hardcodeada para funcionamiento local)
-    const apiKey = 'ec625885'; // reemplaza con tu clave si lo deseas
+    // API key: preferir `window.SR.config.apiKey` (no subir a git). Si no existe, usar el valor por defecto
+    const apiKey = (window.SR && window.SR.config && window.SR.config.apiKey && window.SR.config.apiKey !== 'TU_API_KEY_AQUI')
+        ? window.SR.config.apiKey
+        : 'ec625885'; // valor por defecto para pruebas locales (reemplazar localmente)
 
     /************* User Module *************/
     const userModule = (() => {
@@ -77,12 +79,8 @@ $(document).ready(function () {
             $noResults.addClass('hidden');
             const preferredGenre = userModule.getData().genre?.toLowerCase();
 
-            // Ordenar por año (más reciente primero) cuando sea posible
-            movies = movies.slice().sort((a,b) => {
-                const ay = parseInt((a.Year||'').slice(0,4),10) || 0;
-                const by = parseInt((b.Year||'').slice(0,4),10) || 0;
-                return by - ay;
-            });
+            // Aplicar sorting seleccionado por el usuario
+            movies = applySort(movies);
 
             // Mantener solo las películas cuyas imágenes carguen correctamente
             const loadedMovies = [];
@@ -96,9 +94,17 @@ $(document).ready(function () {
                     const highlight = preferredGenre && movie.Genre?.toLowerCase().includes(preferredGenre);
                     const $li = $('<li>').addClass('movie-item fade-in').attr({ tabindex: 0, role: 'listitem' }).data('imdb', movie.imdbID);
                     const $img = $('<img>').attr({ src: movie.Poster, alt: movie.Title, loading: 'lazy' });
-                    const $meta = $('<div>').addClass('movie-meta').text(`${movie.Title} (${movie.Year})`);
+                    // Show only image + title in the list for a clean catalog view
+                    const $meta = $('<div>').addClass('movie-meta');
+                    const $metaContent = $('<div>').addClass('meta-content simple-list');
+                    const $titleDiv = $('<div>').addClass('movie-title').text(movie.Title || 'Sin título');
+                    $metaContent.append($titleDiv);
+                    $meta.append($metaContent);
                     if (highlight) $li.css('border', '2px solid var(--accent-2)');
-                    $li.append($img, $meta).on('click keydown', e => {
+
+                    // append and wire events: clicking list item opens details + game
+                    $li.append($img, $meta);
+                    $li.on('click keydown', e => {
                         if (e.type === 'click' || e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             showDetails(movie.imdbID);
@@ -128,6 +134,28 @@ $(document).ready(function () {
 
             const name = userModule.getData().name;
             if (name) $errorMsg.text(`Hola ${name}, aquí tienes tus resultados personalizados:`);
+        };
+
+        // applySort: reorder movies according to user's selection
+        const applySort = (movies) => {
+            if (!Array.isArray(movies)) return [];
+            const mode = $('#sort-select').val() || 'relevance';
+            const copy = movies.slice();
+            switch (mode) {
+                case 'title-asc':
+                    return copy.sort((a,b) => (a.Title||'').localeCompare(b.Title||'', undefined, {sensitivity:'base'}));
+                case 'title-desc':
+                    return copy.sort((a,b) => (b.Title||'').localeCompare(a.Title||'', undefined, {sensitivity:'base'}));
+                case 'year-asc':
+                    return copy.sort((a,b) => (parseInt(a.Year,10)||0) - (parseInt(b.Year,10)||0));
+                case 'year-desc':
+                    return copy.sort((a,b) => (parseInt(b.Year,10)||0) - (parseInt(a.Year,10)||0));
+                case 'rating-desc':
+                    return copy.sort((a,b) => (parseFloat(b.imdbRating)||0) - (parseFloat(a.imdbRating)||0));
+                case 'relevance':
+                default:
+                    return copy; // leave as returned by OMDb
+            }
         };
 
         const filterByGenre = genre => {
@@ -217,18 +245,48 @@ $(document).ready(function () {
         };
 
         const init = () => {
-            // carga inicial
-            const recentTitles = ["Avatar: The Way of Water", "Oppenheimer", "Barbie", "Spider-Man: Across the Spider-Verse", "Guardians of the Galaxy Vol. 3"];
+            // carga inicial: intentar obtener ~20 películas reales con años correctos
             setBusy(true);
-            const promises = recentTitles.map(t => $.getJSON(`https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(t)}&type=movie`));
-            $.when(...promises).done(function (...results) {
-                let movies = results.map(r => r[0]).filter(m => m?.Response === 'True');
-                // Forzar año 2025 en las películas iniciales (mostrar 5)
-                movies = movies.slice(0,5).map(m => (Object.assign({}, m, { Year: '2025' })));
-                latestLoadedMovies = movies.slice();
-                setBusy(false);
-                renderMovies(movies);
-            }).fail(() => { setBusy(false); $errorMsg.text('No se pudieron cargar películas recientes.'); });
+            if (!apiKey) { setBusy(false); $errorMsg.text('API key no configurada.'); return; }
+
+            const desired = 20;
+            const terms = ['the','love','man','woman','life','war','dark','day','night','new','last','lost','king','story'];
+            const ids = new Set();
+
+            // Fetch search results sequentially until we collect enough unique imdbIDs
+            const fetchSearchTerm = (i) => {
+                if (ids.size >= desired || i >= terms.length) {
+                    const selected = Array.from(ids).slice(0, desired);
+                    if (selected.length === 0) { setBusy(false); $errorMsg.text('No se encontraron películas iniciales.'); return; }
+                    const detailPromises = selected.map(id => $.getJSON(`https://www.omdbapi.com/?apikey=${apiKey}&i=${id}&plot=short`));
+                    $.when(...detailPromises).done(function (...results) {
+                        let movies = results.map(r => r[0]).filter(m => m?.Response === 'True');
+                        latestLoadedMovies = movies.slice();
+                        setBusy(false);
+                        renderMovies(movies);
+                    }).fail(() => { setBusy(false); $errorMsg.text('No se pudieron cargar detalles de películas iniciales.'); });
+                    return;
+                }
+
+                const term = terms[i];
+                $.getJSON(`https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(term)}&type=movie&page=1`)
+                    .done(data => {
+                        if (data.Response === 'True' && Array.isArray(data.Search)) {
+                            data.Search.forEach(s => ids.add(s.imdbID));
+                        }
+                        // Try a second page if available
+                        if (data.totalResults && parseInt(data.totalResults, 10) > 10 && ids.size < desired) {
+                            $.getJSON(`https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(term)}&type=movie&page=2`)
+                                .done(data2 => { if (data2.Response === 'True' && Array.isArray(data2.Search)) data2.Search.forEach(s => ids.add(s.imdbID)); fetchSearchTerm(i+1); })
+                                .fail(() => fetchSearchTerm(i+1));
+                        } else {
+                            fetchSearchTerm(i+1);
+                        }
+                    })
+                    .fail(() => fetchSearchTerm(i+1));
+            };
+
+            fetchSearchTerm(0);
 
             // No ocultamos automáticamente el formulario al iniciar.
             // Añadimos un control visible para permitir mostrar/ocultar la búsqueda.
@@ -261,12 +319,21 @@ $(document).ready(function () {
                 const type = $('#filter-type').val();
                 searchMovies(title, year, { yearTo, genre, type });
             });
+
+            // Sorting: re-render current results when user changes the sort order
+            $('#sort-select').on('change', function () {
+                if (latestLoadedMovies && latestLoadedMovies.length) {
+                    renderMovies(latestLoadedMovies.slice());
+                }
+            });
+
+            // sorting UI removed - no reordering needed
         };
 
         return { init, searchMovies, showDetails, filterByGenre };
     })();
 
-    /************* Game Module *************/
+    /************* Game Module (avanzado) *************/
     const gameModule = (() => {
         const $gameCard = $('#game-card');
         const $gamePrompt = $('#game-prompt');
@@ -277,41 +344,296 @@ $(document).ready(function () {
         const $gameReset = $('#game-reset');
         const $gameScoreVal = $('#game-score-val');
 
-        let state = { movie: null, score: 0, attempts: [] };
+        // Dynamic UI elements (will be created inside $gameCard)
+        let $timerEl = null;
+        let $difficultyEl = null;
+        let $hintBtn = null;
+        let $leaderboardEl = null;
 
-        const setMovieForGame = movie => {
-            state.movie = movie;
-            $gamePrompt.text(`Adivina el año de estreno de: "${movie.Title}"`);
-            $gameCard.removeClass('hidden');
-            $gameFeedback.text('');
-            $gameGuess.val('').focus();
+        // game state
+        let state = {
+            movie: null,
+            score: 0,
+            attempts: [],
+            streak: 0,
+            round: 0,
+            timeLeft: 0,
+            timerId: null,
+            hintsLeft: 0,
+            difficulty: 'medium',
+            mode: 'year' // 'year' | 'director' | 'area' | 'multiple'
         };
 
-        const submitGuess = () => {
-            if (!state.movie) return $gameFeedback.text('No hay película cargada para jugar.');
-            const guess = parseInt($gameGuess.val(), 10);
-            if (!guess || guess < 1800 || guess > 2100) return $gameFeedback.text('Introduce un año válido (1800-2100).');
+        const DIFFICULTY = {
+            easy: { time: 45, hints: 3, name: 'Fácil' },
+            medium: { time: 30, hints: 2, name: 'Normal' },
+            hard: { time: 15, hints: 1, name: 'Difícil' }
+        };
 
-            const actual = parseInt(state.movie.Year, 10);
-            const diff = Math.abs(guess - actual);
-            let points = 0;
-            if (diff === 0) { points = 10; $gameFeedback.text(`¡Correcto! ${state.movie.Title} se estrenó en ${actual}. +10 puntos.`); }
-            else if (diff <= 2) { points = 5; $gameFeedback.text(`Muy cerca. Año real: ${actual}. +5 puntos.`); }
-            else if (diff <= 5) { points = 3; $gameFeedback.text(`Casi. Año real: ${actual}. +3 puntos.`); }
-            else { $gameFeedback.text(`Incorrecto. Año real: ${actual}. +0 puntos.`); }
+        const MODES = ['year', 'director', 'area', 'multiple'];
 
-            state.score += points;
-            state.attempts.push({ guess, actual, points });
+        // util: create UI controls inside game card
+        const ensureUI = () => {
+            if ($timerEl) return;
+            const $controls = $('<div>').addClass('game-controls').css({ display: 'flex', gap: '0.5rem', alignItems: 'center', marginTop: '.5rem' });
+            $timerEl = $('<span>').attr('id', 'game-timer').text('Tiempo: 0s').css({ 'font-weight': '600' });
+            $difficultyEl = $('<select>').attr('id', 'game-difficulty').append('<option value="easy">Fácil</option><option value="medium" selected>Normal</option><option value="hard">Difícil</option>');
+            const $modeSel = $('<select>').attr('id', 'game-mode');
+            MODES.forEach(m => $modeSel.append(`<option value="${m}">${m}</option>`));
+            $hintBtn = $('<button>').attr('id', 'game-hint').text('Pista ( - )').addClass('btn-link');
+            $leaderboardEl = $('<div>').attr('id', 'game-leaderboard').css({ marginTop: '.5rem' });
+
+            $controls.append($timerEl, $difficultyEl, $modeSel, $hintBtn);
+            $gameCard.prepend($controls);
+            $gameCard.append($leaderboardEl);
+
+            // events
+            $difficultyEl.on('change', e => { state.difficulty = e.target.value; });
+            $modeSel.on('change', e => { state.mode = e.target.value; });
+            $hintBtn.on('click', provideHint);
+        };
+
+        const formatTime = s => `${s}s`;
+
+        // leaderboard in localStorage
+        const loadLeaderboard = () => {
+            try { return JSON.parse(localStorage.getItem('sr_game_leaderboard') || '[]'); } catch (e) { return []; }
+        };
+        const saveLeaderboard = (entry) => {
+            const lb = loadLeaderboard();
+            lb.push(entry);
+            lb.sort((a,b) => b.score - a.score);
+            const top = lb.slice(0, 10);
+            try { localStorage.setItem('sr_game_leaderboard', JSON.stringify(top)); } catch (e) {}
+            renderLeaderboard();
+        };
+        const renderLeaderboard = () => {
+            if (!$leaderboardEl) return;
+            const lb = loadLeaderboard();
+            if (lb.length === 0) { $leaderboardEl.html('<p class="small">Sin puntuaciones aún.</p>'); return; }
+            const html = ['<h4>Tabla de puntuaciones</h4>','<ol>'];
+            lb.forEach(r => html.push(`<li>${r.name || 'Anon'} - ${r.score} pts (${r.date})</li>`));
+            html.push('</ol>');
+            $leaderboardEl.html(html.join(''));
+        };
+
+        const startTimer = () => {
+            clearTimer();
+            const cfg = DIFFICULTY[state.difficulty] || DIFFICULTY.medium;
+            state.timeLeft = cfg.time;
+            state.hintsLeft = cfg.hints;
+            $timerEl.text('Tiempo: ' + formatTime(state.timeLeft));
+            updateHintText();
+            state.timerId = setInterval(() => {
+                state.timeLeft -= 1;
+                $timerEl.text('Tiempo: ' + formatTime(state.timeLeft));
+                if (state.timeLeft <= 0) {
+                    clearTimer();
+                    onTimeUp();
+                }
+            }, 1000);
+        };
+        const clearTimer = () => { if (state.timerId) clearInterval(state.timerId); state.timerId = null; };
+
+        const updateHintText = () => {
+            if (!$hintBtn) return;
+            $hintBtn.text(`Pista (${state.hintsLeft})`);
+        };
+
+        const onTimeUp = () => {
+            $gameFeedback.text('Se acabó el tiempo. Puntos: 0.');
+            state.streak = 0;
+            state.attempts.push({ result: 'timeout', points: 0 });
             $gameScoreVal.text(state.score);
         };
 
-        const nextMovie = () => { state.movie = null; $gameCard.addClass('hidden'); $gameFeedback.text(''); $gameGuess.val(''); };
-        const resetGame = () => { state = { movie: null, score: 0, attempts: [] }; $gameScoreVal.text('0'); $gameCard.addClass('hidden'); $gameFeedback.text('Juego reiniciado.'); };
+        // Evaluate guess based on current mode
+        const evaluate = (guess) => {
+            if (!state.movie) return { ok: false, points: 0, msg: 'No hay película cargada' };
+            const mode = state.mode;
+            let points = 0; let ok = false; let msg = '';
+            const baseTime = DIFFICULTY[state.difficulty].time;
+            const timeBonus = Math.round((state.timeLeft / baseTime) * 5);
+            const streakMult = 1 + Math.floor(state.streak / 3) * 0.1; // pequeño bonus por racha
+
+            if (mode === 'year') {
+                const actual = parseInt(state.movie.Year, 10) || 0;
+                const g = parseInt(guess, 10) || 0;
+                const diff = Math.abs(actual - g);
+                if (diff === 0) { points = 20 + timeBonus; ok = true; msg = `Exacto! Año: ${actual}`; }
+                else if (diff <= 2) { points = 10 + timeBonus; ok = true; msg = `Muy cerca. Año real: ${actual}`; }
+                else if (diff <= 5) { points = 5 + Math.max(0, timeBonus-1); ok = true; msg = `Casi. Año real: ${actual}`; }
+                else { points = 0; msg = `Incorrecto. Año real: ${actual}`; }
+            } else if (mode === 'director') {
+                const dir = (state.movie.Director || '').toLowerCase();
+                if (!dir) { msg = 'No hay información del director.'; }
+                else {
+                    if ((dir).includes((guess||'').toLowerCase())) { points = 20 + timeBonus; ok = true; msg = `Correcto. Director: ${state.movie.Director}`; }
+                    else { points = 0; msg = `Incorrecto. Director: ${state.movie.Director || 'N/D'}`; }
+                }
+            } else if (mode === 'area') {
+                // Try common fields: Country, Language, Area (if present), or Genre as fallback
+                const areaCandidates = [];
+                if (state.movie.Country) areaCandidates.push(state.movie.Country);
+                if (state.movie.Language) areaCandidates.push(state.movie.Language);
+                if (state.movie.Area) areaCandidates.push(state.movie.Area);
+                if (state.movie.Genre) areaCandidates.push(state.movie.Genre);
+                // normalize
+                const areaField = areaCandidates.length ? areaCandidates.join(' / ') : '';
+                if (!areaField) { msg = 'No hay información de área disponible para esta película.'; }
+                else {
+                    if (areaField.toLowerCase().includes((guess||'').toLowerCase())) { points = 10 + timeBonus; ok = true; msg = `Correcto. Área/Info: ${areaField}`; }
+                    else { points = 0; msg = `Incorrecto. Área: ${areaField}`; }
+                }
+            } else { // multiple choice mode
+                // guess expected to be one of provided choices (exact string)
+                const correct = state.movie.Title || state.movie.strMeal || state.movie.name || '';
+                if (!correct) { msg = 'No hay título para comparar.'; }
+                else {
+                    if ((guess || '').toLowerCase() === correct.toLowerCase()) { points = 15 + timeBonus; ok = true; msg = `¡Correcto! ${correct}`; }
+                    else { points = 0; msg = `Incorrecto. Era: ${correct}`; }
+                }
+            }
+
+            points = Math.round(points * streakMult);
+            return { ok, points, msg };
+        };
+
+        // provide hint (consume hintsLeft)
+        const provideHint = () => {
+            if (!state.movie) return $gameFeedback.text('Carga una película primero.');
+            if (state.hintsLeft <= 0) return $gameFeedback.text('No tienes más pistas.');
+            const h = state.hintsLeft;
+            // choose hint type
+            const opts = [];
+            if (state.movie.Genre) opts.push({ t: 'Género', v: state.movie.Genre });
+            if (state.movie.Runtime) opts.push({ t: 'Duración', v: state.movie.Runtime });
+            if (state.movie.Actors) opts.push({ t: 'Reparto', v: state.movie.Actors.split(',')[0] });
+            if (state.movie.imdbRating) opts.push({ t: 'IMDB rating', v: state.movie.imdbRating });
+            if (opts.length === 0) return $gameFeedback.text('No hay pistas disponibles para esta película.');
+            const pick = opts[Math.floor(Math.random() * opts.length)];
+            state.hintsLeft -= 1;
+            updateHintText();
+            $gameFeedback.text(`Pista: ${pick.t} → ${pick.v}`);
+        };
+
+        // start a new round (use existing state.movie)
+        const startRound = () => {
+            if (!state.movie) return $gameFeedback.text('No hay película cargada para jugar.');
+            state.round += 1;
+            ensureUI();
+            startTimer();
+            // build prompt based on mode
+            const mode = state.mode;
+            if (mode === 'year') {
+                $gamePrompt.text(`Ronda ${state.round}: Adivina el año de estreno de "${state.movie.Title}"`);
+                $gameGuess.attr('type', 'number').val('').attr('placeholder', 'Año (ej: 1999)');
+            } else if (mode === 'director') {
+                $gamePrompt.text(`Ronda ${state.round}: ¿Quién dirigió "${state.movie.Title}"? (escribe el apellido o nombre)`);
+                $gameGuess.attr('type', 'text').val('').attr('placeholder', 'Nombre del director');
+            } else if (mode === 'area') {
+                $gamePrompt.text(`Ronda ${state.round}: Adivina un dato relacionado (país/idioma) de: "${state.movie.Title}"`);
+                $gameGuess.attr('type', 'text').val('').attr('placeholder', 'Ej: Spain, English');
+            } else { // multiple
+                // build multiple choice options
+                const correct = state.movie.Title;
+                const choices = [correct];
+                // sample some other movies from the page by performing a small quick search using existing API
+                // We'll attempt to fetch related movies by the same year to create distractors
+                const year = (state.movie.Year || '').slice(0,4);
+                // create async fetches (but continue synchronously - we will not block here); for simplicity create fake distractors
+                for (let i=0;i<3;i++) choices.push(correct + ' ' + String.fromCharCode(65+i));
+                // shuffle
+                const shuffled = choices.sort(() => Math.random()-0.5);
+                let html = `<p>Ronda ${state.round}: Elige el título correcto para la siguiente pista:</p>`;
+                shuffled.forEach(c => html += `<button class="mc-choice btn-secondary" data-choice="${c}">${c}</button>`);
+                $gamePrompt.html(html);
+                $gameGuess.attr('type','text').val('').attr('placeholder','Haz click en la opción correcta');
+                // attach handlers
+                $gamePrompt.find('.mc-choice').on('click', function(){
+                    const choice = $(this).data('choice');
+                    const res = evaluate(choice);
+                    onRoundEnd(res);
+                });
+                return; // mc mode handled
+            }
+
+            $gameFeedback.text('');
+            $gameGuess.focus();
+        };
+
+        const onRoundEnd = (result) => {
+            clearTimer();
+            if (result.ok) {
+                state.score += result.points;
+                state.streak += 1;
+            } else {
+                state.streak = 0;
+            }
+            state.attempts.push({ result: result.msg, points: result.points });
+            $gameScoreVal.text(state.score);
+            $gameFeedback.text(result.msg + (result.points ? ` +${result.points} pts` : ''));
+            // persist to leaderboard if >= threshold or on reset
+            if (state.score > 0) {
+                const name = userModule.getData().name || 'Anon';
+                saveLeaderboard({ name, score: state.score, date: new Date().toLocaleString() });
+            }
+        };
+
+        const submitGuess = () => {
+            const val = $gameGuess.val().trim();
+            if (!val) return $gameFeedback.text('Introduce una respuesta antes de enviar.');
+            const res = evaluate(val);
+            onRoundEnd(res);
+        };
+
+        const setMovieForGame = (movie) => {
+            state.movie = movie;
+            ensureUI();
+            $gameCard.removeClass('hidden');
+            // preload poster if exists
+            const poster = movie.Poster && movie.Poster !== 'N/A' ? movie.Poster : '';
+            const infoHtml = `<p><strong>${movie.Title}</strong> (${movie.Year}) ${poster ? `<img src="${poster}" alt="${movie.Title}" style="width:100px;display:block;margin-top:.5rem;">` : ''}</p>`;
+            $gamePrompt.html(infoHtml);
+            renderLeaderboard();
+            startRound();
+        };
+
+        // helper: fetch by title using existing apiKey (shared in app scope)
+        const fetchMovieByTitle = (title) => {
+            if (!title) return $.Deferred().reject('Título vacío');
+            if (!apiKey) return $.Deferred().reject('API key no configurada');
+            const d = $.Deferred();
+            $.getJSON(`https://www.omdbapi.com/?apikey=${apiKey}&t=${encodeURIComponent(title)}`)
+                .done(data => {
+                    if (data && data.Response === 'True') d.resolve(data);
+                    else d.reject(data && data.Error ? data.Error : 'No encontrado');
+                })
+                .fail(() => d.reject('Error conexión'));
+            return d.promise();
+        };
+
+        const nextMovie = () => { state.movie = null; $gameCard.addClass('hidden'); $gameFeedback.text(''); $gameGuess.val(''); clearTimer(); };
+        const resetGame = () => { state = { movie: null, score: 0, attempts: [], streak: 0, round: 0, timeLeft: 0, timerId: null, hintsLeft: 0, difficulty: state.difficulty, mode: state.mode }; $gameScoreVal.text('0'); $gameCard.addClass('hidden'); $gameFeedback.text('Juego reiniciado.'); renderLeaderboard(); };
 
         const init = () => {
-            $gameSubmit.on('click', submitGuess);
-            $gameNext.on('click', nextMovie);
-            $gameReset.on('click', resetGame);
+            ensureUI();
+            $gameSubmit.off('click').on('click', submitGuess);
+            $gameNext.off('click').on('click', () => { nextMovie(); });
+            $gameReset.off('click').on('click', resetGame);
+            // cargar película por título desde el input del panel
+            $('#game-load').off('click').on('click', function(){
+                const title = $('#game-movie-input').val().trim();
+                if (!title) { $gameFeedback.text('Introduce un título para cargar.'); return; }
+                $gameFeedback.text('Cargando...');
+                fetchMovieByTitle(title).then(m => {
+                    setMovieForGame(m);
+                    $gameFeedback.text('Película cargada. ¡Buena suerte!');
+                }).catch(err => {
+                    $gameFeedback.text('No se pudo cargar la película: ' + err);
+                });
+            });
+            renderLeaderboard();
         };
 
         return { init, setMovieForGame };

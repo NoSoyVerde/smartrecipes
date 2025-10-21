@@ -1,7 +1,8 @@
 // ui.js - Versión completa adaptada a la nueva rejilla y "leer más"
 
-import { saveFavorite, getFavorites, removeFavorite } from "./storage.js";
+import { saveFavorite, getFavorites, removeFavorite, isFavorite, syncFavoriteButtons } from "./storage.js";
 import { showToast } from "./utils.js";
+import Recipe from "./recipe.js";
 
 /**
  * Renderiza recetas en un contenedor específico
@@ -18,44 +19,46 @@ export function renderRecipes(list, containerId = "app") {
   }
 
   // Construir HTML con lazy-loading y atributos accesibles
-  container.innerHTML = list.map(r => {
+  const buildRecipeCard = (raw) => {
+    const r = new Recipe(raw);
     // Obtener ingredientes y cantidades
     let ingredients = "";
-    for (let i = 1; i <= 20; i++) {
-      const ingredient = r[`strIngredient${i}`];
-      const measure = r[`strMeasure${i}`];
-      if (ingredient && ingredient.trim() !== "") {
-        ingredients += `<li>${ingredient} - ${measure || ""}</li>`;
-      }
-    }
+    r.getIngredients().forEach(item => {
+      ingredients += `<li>${item.ingredient} - ${item.measure}</li>`;
+    });
+
+    const favBadge = isFavorite(r.id) ? `<span class="fav-badge" aria-hidden="true">★</span>` : '';
 
     return `
     <div class="recipe">
-      <h3>${r.strMeal}</h3>
-      <img loading="lazy" src="${r.strMealThumb}" alt="Imagen de ${r.strMeal}" width="150"/>
-      <p><strong>Categoría:</strong> ${r.strCategory || "Desconocida"}</p>
-      <p><strong>Área:</strong> ${r.strArea || "Desconocida"}</p>
-      <p class="instructions-preview">${r.strInstructions ? r.strInstructions.slice(0, 100) + "..." : "No disponible"}</p>
-      <button class="read-more-btn" data-id="${r.idMeal}" aria-expanded="false">Leer más</button>
-      <ul class="ingredients-list" style="display:none;" aria-hidden="true">${ingredients}</ul>
-      <button data-id="${r.idMeal}" class="fav-btn" aria-pressed="false">❤️ Añadir a favoritos</button>
+      <img loading="lazy" src="${r.thumbnail}" alt="Imagen de ${r.name}" />
+      <div class="content">
+        <h3 class="movie-title">${r.name} ${favBadge}</h3>
+        <div class="movie-sub">${r.category || "Desconocida"} • ${r.area || "Desconocida"}</div>
+        <p class="instructions-preview">${r.getInstructionsPreview(120) || "No disponible"}</p>
+        <ul class="ingredients-list" style="display:none" aria-hidden="true">${ingredients}</ul>
+      </div>
+      <div class="footer">
+        <button class="read-more-btn" data-id="${r.id}" aria-expanded="false">Leer más</button>
+        <button data-id="${r.id}" class="fav-btn" aria-pressed="false">❤️ Añadir</button>
+      </div>
     </div>
     `;
-  }).join("");
+  };
+
+  container.innerHTML = list.map(buildRecipeCard).join("");
 
   // Favoritos: delegado por data-id y lista de recetas en closure
   container.querySelectorAll(".fav-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       const id = e.currentTarget.dataset.id;
-      const recipe = list.find(r => r.idMeal === id);
-      if (!recipe) return;
+      const recipeRaw = list.find(item => (new Recipe(item)).id === id);
+      if (!recipeRaw) return;
 
-      saveFavorite(recipe);
-      e.currentTarget.textContent = "✅ Favorito añadido";
-      e.currentTarget.disabled = true;
-      e.currentTarget.classList.add("disabled");
-      e.currentTarget.setAttribute('aria-pressed', 'true');
-      showToast(`Receta "${recipe.strMeal}" añadida a favoritos ✅`);
+      saveFavorite(recipeRaw);
+      // update badges and buttons
+      syncFavoriteButtons(list);
+      showToast(`Receta "${(new Recipe(recipeRaw)).name}" añadida a favoritos ✅`);
     });
   });
 
@@ -63,26 +66,45 @@ export function renderRecipes(list, containerId = "app") {
   container.querySelectorAll(".read-more-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       const id = e.currentTarget.dataset.id;
-      const recipe = list.find(r => r.idMeal === id);
-      if (!recipe) return;
+      const raw = list.find(item => (new Recipe(item)).id === id);
+      if (!raw) return;
+      const recipe = new Recipe(raw);
 
       const parent = e.currentTarget.closest(".recipe");
+      if (!parent) return;
+
       const instructionsEl = parent.querySelector(".instructions-preview");
-      const ingList = parent.querySelector(".ingredients-list");
+      let ingList = parent.querySelector(".ingredients-list");
+      if (!ingList) {
+        // create and append if missing
+        ingList = document.createElement('ul');
+        ingList.className = 'ingredients-list';
+        ingList.style.display = 'none';
+        ingList.setAttribute('aria-hidden', 'true');
+        parent.querySelector('.content').appendChild(ingList);
+      }
 
       const expanded = e.currentTarget.getAttribute('aria-expanded') === 'true';
       if (expanded) {
-        instructionsEl.textContent = recipe.strInstructions ? recipe.strInstructions.slice(0,100) + "..." : "No disponible";
+        // collapse
+        if (instructionsEl) instructionsEl.textContent = recipe.getInstructionsPreview(120);
         e.currentTarget.textContent = "Leer más";
         e.currentTarget.setAttribute('aria-expanded', 'false');
         ingList.style.display = 'none';
         ingList.setAttribute('aria-hidden', 'true');
+        parent.classList.remove('expanded');
       } else {
-        instructionsEl.textContent = recipe.strInstructions || "No disponible";
+        // expand: fill full instructions and ingredients
+        if (instructionsEl) instructionsEl.textContent = recipe.instructions || "No disponible";
+        // populate ingredients list
+        const ingrHtml = recipe.getIngredients().map(i => `<li>${i.ingredient} - ${i.measure}</li>`).join('');
+        ingList.innerHTML = ingrHtml;
         e.currentTarget.textContent = "Leer menos";
         e.currentTarget.setAttribute('aria-expanded', 'true');
         ingList.style.display = 'block';
         ingList.setAttribute('aria-hidden', 'false');
+        // mark card expanded so CSS can remove clamps and allow full content
+        parent.classList.add('expanded');
       }
     });
   });
@@ -99,25 +121,21 @@ export function renderFavorites() {
     return;
   }
 
+  // Reuse the same card HTML for consistency; add a prominent remove button
   app.innerHTML = `<div class="recipes-grid">` + favs.map(f => {
-    // Ingredientes
-    let ingredients = "";
-    for (let i = 1; i <= 20; i++) {
-      const ingredient = f[`strIngredient${i}`];
-      const measure = f[`strMeasure${i}`];
-      if (ingredient && ingredient.trim() !== "") {
-        ingredients += `<li>${ingredient} - ${measure || ""}</li>`;
-      }
-    }
-
+    const r = new Recipe(f);
+    const ingredients = r.getIngredients().map(i => `<li>${i.ingredient} - ${i.measure}</li>`).join('');
     return `
-    <div class="recipe">
-      <h3>${f.strMeal}</h3>
-      <img src="${f.strMealThumb}" alt="${f.strMeal}" width="150"/>
-      <p><strong>Categoría:</strong> ${f.strCategory || "Desconocida"}</p>
-      <p><strong>Área:</strong> ${f.strArea || "Desconocida"}</p>
-      <ul class="ingredients-list">${ingredients}</ul>
-      <button data-id="${f.idMeal}" class="remove-btn">🗑️ Eliminar</button>
+    <div class="recipe favorite">
+      <img src="${r.thumbnail}" alt="${r.name}" />
+      <div class="content">
+        <h3 class="movie-title">${r.name} <span class="fav-badge">★</span></h3>
+        <div class="movie-sub">${r.category || "Desconocida"} • ${r.area || "Desconocida"}</div>
+        <ul class="ingredients-list">${ingredients}</ul>
+      </div>
+      <div class="footer">
+        <button data-id="${r.id}" class="remove-btn btn-secondary">Eliminar</button>
+      </div>
     </div>
     `;
   }).join("") + `</div>`;
@@ -125,7 +143,10 @@ export function renderFavorites() {
   document.querySelectorAll(".remove-btn").forEach(btn => {
     btn.addEventListener("click", e => {
       removeFavorite(e.target.dataset.id);
+      // re-render both favorites and main list to sync badges
       renderFavorites();
+      // if main list visible, sync buttons/badges
+      try { syncFavoriteButtons(getFavorites()); } catch (err) {}
     });
   });
 }

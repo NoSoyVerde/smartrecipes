@@ -37,10 +37,21 @@
             <form id="movie-form" class="card" aria-labelledby="search-label">
                 <div class="form-row">
                     <label id="search-label" for="movie-input" class="sr-only">Título de película</label>
-                    <input type="text" id="movie-input" placeholder="Escribe el título de una película" required aria-describedby="search-help" aria-controls="movie-list">
+                    <input type="text" id="movie-input" placeholder="Título o palabra clave (p.ej. 'Matrix')" required aria-describedby="search-help" aria-controls="movie-list">
                     <button type="submit" class="btn-primary">Buscar</button>
                 </div>
-                <p id="search-help" class="small">Presiona Enter para buscar. Usa Tab para navegar entre resultados.</p>
+                <div class="form-row" style="margin-top:.5rem;align-items:center;gap:.5rem;">
+                    <label for="sort-select" class="small">Ordenar por:</label>
+                    <select id="sort-select" aria-label="Ordenar resultados">
+                        <option value="relevance">Más relevantes (por OMDb)</option>
+                        <option value="title-asc">Título A→Z</option>
+                        <option value="title-desc">Título Z→A</option>
+                        <option value="year-desc">Año (más nuevo)</option>
+                        <option value="year-asc">Año (más antiguo)</option>
+                        <option value="rating-desc">IMDB Rating (mayor primero)</option>
+                    </select>
+                </div>
+                <p id="search-help" class="small">Presiona Enter o click en Buscar para obtener resultados. Usa Tab para navegar. Cambia "Ordenar por" para reordenar los resultados mostrados.</p>
                 <div class="form-actions">
                     <button type="button" id="toggle-advanced" class="btn-link" aria-expanded="false" aria-controls="advanced-form">Búsqueda avanzada ▾</button>
                 </div>
@@ -89,13 +100,30 @@
             <!-- Panel Sugerencias -->
             <div id="panel-feedback" role="tabpanel" tabindex="0" aria-labelledby="tab-feedback">
                 <form id="feedback-form" class="card" aria-labelledby="feedback-title">
-                    <h3 id="feedback-title">Enviar sugerencia</h3>
+                    <h3 id="feedback-title">Enviar sugerencia / Informe</h3>
                     <div class="form-row">
                         <input type="text" id="fb-name" placeholder="Tu nombre" required aria-label="Nombre">
                         <input type="email" id="fb-email" placeholder="Tu correo (opcional)" aria-label="Correo">
                     </div>
+                    <div class="form-row">
+                        <select id="fb-category" aria-label="Categoría">
+                            <option value="general">General</option>
+                            <option value="bug">Bug</option>
+                            <option value="ux">UX</option>
+                            <option value="feature">Feature</option>
+                        </select>
+                        <select id="fb-priority" aria-label="Prioridad">
+                            <option value="low">Baja</option>
+                            <option value="medium" selected>Media</option>
+                            <option value="high">Alta</option>
+                        </select>
+                    </div>
                     <div>
-                        <textarea id="fb-text" rows="4" placeholder="Escribe tu sugerencia o comentario" required aria-label="Sugerencia"></textarea>
+                        <textarea id="fb-text" rows="5" placeholder="Describe aquí tu sugerencia o el problema (máx 1000 caracteres)" required aria-label="Sugerencia"></textarea>
+                    </div>
+                    <div class="form-row">
+                        <input type="url" id="fb-screenshot" placeholder="URL de captura (opcional)" aria-label="Captura URL">
+                        <input type="text" id="fb-app-version" placeholder="Versión / User Agent (opcional)" aria-label="Versión">
                     </div>
                     <div class="form-actions">
                         <button type="submit" class="btn-primary">Enviar</button>

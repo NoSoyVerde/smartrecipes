@@ -1,375 +1,171 @@
-/* ===========================
-   🌿 SMARTRECIPES - STYLES EXTENDIDO PREMIUM
-   =========================== */
+/* ==================================================
+   SMARTRECIPES — Clean, responsive & accessible styles
+   Reworked for clarity: variables, light/dark, focus, responsive grid
+   ================================================== */
 
-/* ---------- VARIABLES ---------- */
-:root {
-  --color-primary: #3cb371;
-  --color-primary-dark: #2e8b57;
-  --color-accent: #1abc9c;
-  --color-bg-light: #f9f9f9;
-  --color-bg-dark: #1c1c1c;
-  --color-text-light: #f5f5f5;
-  --color-text-dark: #222;
-  --color-card-bg: #fff;
-  --color-fav: #ff6b6b;
-  --shadow-soft: 0 2px 8px rgba(0, 0, 0, 0.1);
-  --shadow-medium: 0 6px 18px rgba(0,0,0,0.15);
+/* ---------- Design tokens ---------- */
+:root{
+  --bg: #f7fafc;
+  --bg-contrast: #eef2f6;
+  --surface: #ffffff;
+  --text: #0b1220;
+  --muted: #6b7280;
+  --primary: #16a34a; /* green */
+  --accent: #06b6d4;  /* cyan */
+  --danger: #ef4444;
+  --fav: #ff6b6b;
   --radius: 12px;
-  --transition: all 0.3s ease;
+  --shadow: 0 12px 30px rgba(2,6,23,0.06);
+  --container: 1200px;
+  --transition: 200ms ease;
+  --card-min-height: 320px;
+  --card-img-height: 160px;
 }
 
-/* ---------- RESET Y BASE ---------- */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
+/* Prefer a pleasant UI font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap');
+
+/* Dark theme overrides */
+[data-theme="dark"]{
+  --bg: #071026;
+  --bg-contrast: #081426;
+  --surface: #0f1724;
+  --text: #e6eef6;
+  --muted: #9fb0c8;
 }
 
-html {
-  scroll-behavior: smooth;
+/* ---------- Base ---------- */
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial;
+  background:var(--bg);
+  color:var(--text);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
 }
 
-body {
-  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
-  background: var(--color-bg-light);
-  color: var(--color-text-dark);
-  transition: var(--transition);
-  line-height: 1.6;
-  position: relative;
+/* Typography defaults */
+body{font-weight:400}
+h1,h2,h3{font-weight:600}
+
+
+img{max-width:100%;height:auto;display:block}
+
+a{color:inherit;text-decoration:none}
+
+/* Utility */
+.container{max-width:var(--container);margin:0 auto;padding:0 1rem}
+.sr-only{position:absolute!important;height:1px;width:1px;overflow:hidden;clip:rect(1px,1px,1px,1px);white-space:nowrap}
+
+/* ---------- Header / Nav ---------- */
+header{
+  background:linear-gradient(90deg,var(--primary),#10b981);
+  color:#fff;padding:1rem 0;position:sticky;top:0;z-index:40;box-shadow:var(--shadow)
+}
+header .container{display:flex;align-items:center;gap:1rem}
+header h1{font-size:1.25rem;margin:0;font-weight:700}
+nav{display:flex;gap:.6rem;align-items:center;margin-left:auto}
+
+#search-input{flex:0 0 220px;padding:.45rem .6rem;border-radius:10px;border:1px solid rgba(0,0,0,0.06)}
+#search-btn{padding:.45rem .75rem;border-radius:10px;background:rgba(255,255,255,0.12);color:#fff;border:none;cursor:pointer}
+
+/* Theme toggle button */
+#theme-toggle{background:none;border:1px solid rgba(255,255,255,0.08);padding:.4rem .6rem;border-radius:8px;color:inherit}
+
+/* ---------- Main content ---------- */
+main{padding:2rem 0}
+.recipes-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1.25rem;align-items:start;align-content:start}
+
+.recipe{
+  background:var(--surface);
+  border-radius:var(--radius);
+  padding:1rem;
+  box-shadow:var(--shadow);
+  border:1px solid rgba(10,10,10,0.03);
+  transition:transform var(--transition),box-shadow var(--transition);
+}
+.recipe:hover{transform:translateY(-6px)}
+.recipe h3{margin:.5rem 0;color:var(--primary);font-size:1.05rem}
+.recipe .meta{font-size:.9rem;color:var(--muted);margin-bottom:.5rem}
+.recipe .instructions-preview{font-size:.95rem;margin:.5rem 0}
+.recipe .ingredients-list{margin:.5rem 0 0 0;padding-left:1rem;color:var(--muted)}
+
+.fav-btn{background:var(--fav);color:#fff;border-radius:8px;padding:.45rem .6rem;border:none;cursor:pointer}
+.read-more-btn{background:var(--accent);color:#fff;border-radius:8px;padding:.45rem .6rem;border:none;cursor:pointer}
+
+/* Favorite badge and favorite card styles */
+.fav-badge{color:var(--fav);font-size:1.05rem;margin-left:.4rem}
+.recipe.favorite{border:2px solid rgba(255,107,107,0.12);box-shadow:0 18px 40px rgba(255,107,107,0.06)}
+.remove-btn{background:transparent;border:1px solid rgba(0,0,0,0.06);padding:.45rem .6rem;border-radius:8px;cursor:pointer}
+.remove-btn:hover{background:rgba(0,0,0,0.03)}
+
+/* Forms and contact */
+form{max-width:540px;background:var(--surface);padding:1rem;border-radius:var(--radius);box-shadow:var(--shadow)}
+input,textarea,select{width:100%;padding:.7rem;border-radius:8px;border:1px solid rgba(0,0,0,0.06);margin:0 0 .6rem 0}
+input:focus,textarea:focus,select:focus{outline:none;box-shadow:0 0 0 4px rgba(6,182,212,0.08)}
+
+/* Buttons */
+button{font-weight:600}
+
+/* Loader & toast */
+.loader{border:4px solid rgba(0,0,0,0.05);border-top:4px solid var(--primary);border-radius:50%;width:34px;height:34px;animation:spin 0.9s linear infinite;margin:2rem auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.toast{position:fixed;right:1rem;bottom:1rem;background:rgba(11,18,32,0.9);color:#fff;padding:.6rem .9rem;border-radius:8px;opacity:0;transform:translateY(8px);transition:opacity .18s,transform .18s;z-index:9999}
+.toast.show{opacity:1;transform:none}
+
+/* Accordion / read more */
+.read-more-btn{display:inline-block;margin-top:.5rem}
+
+/* Accessibility focus */
+:focus{outline:3px solid rgba(6,182,212,0.14);outline-offset:3px}
+
+/* Responsive tweaks */
+@media (max-width:900px){
+  header .container{flex-direction:row;align-items:center}
+  #search-input{flex-basis:160px}
 }
 
-/* ---------- MODO OSCURO ---------- */
-[data-theme="dark"] {
-  background: var(--color-bg-dark);
-  color: var(--color-text-light);
+@media (max-width:600px){
+  nav{gap:.4rem}
+  #search-input{display:inline-block;width:120px}
+  .recipes-grid{grid-template-columns:repeat(2,1fr)}
 }
 
-[data-theme="dark"] header,
-[data-theme="dark"] footer {
-  background: #222;
+@media (max-width:380px){
+  .recipes-grid{grid-template-columns:1fr}
 }
 
-[data-theme="dark"] .recipe {
-  background: #2a2a2a;
-  border-color: #333;
-}
+/* Uniform card sizing: make all recipe cards identical height and center their content */
+.recipe{display:flex;flex-direction:column;justify-content:space-between;min-height:var(--card-min-height);overflow:hidden}
+.recipe img{width:100%;height:var(--card-img-height);object-fit:cover;border-radius:8px;flex-shrink:0}
+.recipe .movie-title{font-weight:700;margin:0 0 .25rem}
+.recipe .movie-sub{color:var(--muted);font-size:0.9rem;margin:0 0 .5rem}
+.recipe .content{flex:1;display:flex;flex-direction:column;justify-content:flex-start}
+.recipe .footer{margin-top:0.75rem;display:flex;align-items:center;justify-content:space-between}
 
-[data-theme="dark"] a {
-  color: var(--color-accent);
-}
+/* Clamp title and preview text to maintain uniform heights */
+.recipe .movie-title{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;line-clamp:2}
+.recipe .instructions-preview{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3}
 
-[data-theme="dark"] .accordion-content {
-  color: var(--color-text-light);
-}
+/* ensure meta and footer spacing keeps cards uniform */
+.recipe .meta{display:flex;flex-direction:column;justify-content:flex-start;gap:0.25rem}
+.recipe .footer{margin-top:auto}
 
-/* ---------- CABECERA Y NAVEGACIÓN ---------- */
-header {
-  background: var(--color-primary);
-  color: white;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 1.2em 1em;
-  box-shadow: var(--shadow-soft);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
+/* Content/footer rules for consistent card layout */
+.content{display:flex;flex-direction:column;gap:0.4rem}
+.footer{display:flex;gap:0.6rem;align-items:center}
+.movie-plot{font-size:0.95rem;color:var(--muted);display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;line-clamp:3;overflow:hidden}
+.movie-sub{color:var(--muted);font-size:0.9rem}
 
-header h1 {
-  font-size: 1.8rem;
-  margin-bottom: 0.5em;
-  letter-spacing: 1px;
-}
+/* When a card is expanded, show the full instructions and ingredients */
+.recipe.expanded{min-height:auto}
+.recipe.expanded .instructions-preview{display:block;overflow:visible;-webkit-line-clamp:unset;line-clamp:unset}
+.recipe.expanded .ingredients-list{display:block;max-height:none;overflow:visible}
 
-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.8em;
-  align-items: center;
-  justify-content: center;
-}
+/* Small helpers */
+.small{font-size:.85rem;color:var(--muted)}
 
-nav a {
-  color: white;
-  text-decoration: none;
-  padding: 0.5em 0.8em;
-  border-radius: var(--radius);
-  font-weight: 500;
-  transition: var(--transition);
-}
-
-nav a:hover,
-nav a.active {
-  background: rgba(255, 255, 255, 0.2);
-}
-
-#theme-toggle {
-  background: rgba(255, 255, 255, 0.15);
-  border: none;
-  color: white;
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  font-size: 1.1rem;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-#theme-toggle:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(20deg);
-}
-
-/* ---------- BARRA DE BÚSQUEDA ---------- */
-#search-input {
-  flex: 0 0 180px;
-  padding: 0.4em;
-  border-radius: var(--radius);
-  border: 1px solid #ccc;
-}
-
-#search-btn {
-  padding: 0.4em 0.8em;
-  border-radius: var(--radius);
-  background: var(--color-primary);
-  color: white;
-  border: none;
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-#search-btn:hover {
-  background: var(--color-primary-dark);
-}
-
-/* ---------- CONTENIDO PRINCIPAL ---------- */
-main {
-  max-width: 1200px;
-  margin: 2em auto;
-  padding: 0 1em;
-}
-
-.recipes-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 1.5em;
-  justify-items: center;
-}
-
-/* ---------- TARJETAS DE RECETA ---------- */
-.recipe {
-  background: var(--color-card-bg);
-  border: 1px solid #ddd;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
-  padding: 1em;
-  transition: var(--transition);
-  text-align: center;
-  width: 100%;
-  max-width: 300px;
-}
-
-.recipe:hover {
-  transform: translateY(-4px);
-  box-shadow: var(--shadow-medium);
-}
-
-.recipe h3 {
-  margin: 0.5em 0;
-  color: var(--color-primary-dark);
-}
-
-.recipe img {
-  border-radius: var(--radius);
-  max-width: 100%;
-  height: auto;
-  box-shadow: var(--shadow-soft);
-}
-
-.recipe p {
-  margin: 0.3em 0;
-  font-size: 0.9rem;
-  line-height: 1.3;
-}
-
-.recipe button {
-  margin-top: 0.6em;
-}
-
-/* ---------- FAVORITOS ---------- */
-button.fav-btn {
-  background: var(--color-primary);
-}
-
-button.fav-btn.disabled {
-  background: var(--color-fav);
-  cursor: default;
-}
-
-/* ---------- BOTONES ---------- */
-button {
-  border: none;
-  color: white;
-  font-weight: 500;
-  padding: 0.6em 1em;
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: var(--transition);
-}
-
-button:hover:not(.disabled) {
-  transform: translateY(-2px);
-}
-
-button.remove-btn {
-  background: #e74c3c;
-}
-
-button.remove-btn:hover {
-  background: #c0392b;
-}
-
-/* ---------- FORMULARIOS ---------- */
-form {
-  max-width: 450px;
-  margin: 1em auto;
-  display: flex;
-  flex-direction: column;
-  gap: 0.8em;
-  background: var(--color-card-bg);
-  padding: 1.5em;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
-}
-
-input, textarea, select {
-  padding: 0.8em;
-  border: 1px solid #ccc;
-  border-radius: var(--radius);
-  font-size: 1rem;
-  transition: var(--transition);
-}
-
-input:focus, textarea:focus, select:focus {
-  border-color: var(--color-accent);
-  outline: none;
-  box-shadow: 0 0 0 3px rgba(26, 188, 156, 0.2);
-}
-
-textarea {
-  resize: vertical;
-}
-
-/* ---------- FOOTER ---------- */
-footer {
-  background: var(--color-primary-dark);
-  color: white;
-  text-align: center;
-  padding: 1.2em;
-  margin-top: 3em;
-  font-size: 0.9rem;
-  box-shadow: var(--shadow-soft);
-}
-
-/* ---------- RESPONSIVE ---------- */
-@media (max-width: 768px) {
-  header h1 {
-    font-size: 1.5rem;
-  }
-
-  .recipes-grid {
-    grid-template-columns: 1fr;
-  }
-
-  form {
-    width: 100%;
-  }
-}
-
-/* ---------- ACORDEÓN ---------- */
-.accordion-container {
-  margin-top: 2em;
-  background: var(--color-card-bg);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-soft);
-  padding: 1em;
-}
-
-.accordion-item + .accordion-item {
-  border-top: 1px solid #ddd;
-}
-
-.accordion-header {
-  background: none;
-  border: none;
-  width: 100%;
-  text-align: left;
-  font-size: 1.1rem;
-  font-weight: 600;
-  padding: 0.8em 0;
-  color: var(--color-primary-dark);
-  cursor: pointer;
-  transition: var(--transition);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.accordion-header::after {
-  content: "▼";
-  font-size: 0.9rem;
-  transition: var(--transition);
-}
-
-.accordion-header.active::after {
-  transform: rotate(180deg);
-}
-
-.accordion-content {
-  display: none;
-  padding: 0.5em 0 1em 0;
-  color: var(--color-text-dark);
-  line-height: 1.5;
-}
-
-/* ---------- NOTIFICACIONES ---------- */
-.toast {
-  position: fixed;
-  bottom: 2em;
-  right: 2em;
-  background: var(--color-primary-dark);
-  color: white;
-  padding: 0.8em 1em;
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-medium);
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.3s ease, transform 0.3s ease;
-  z-index: 999;
-}
-
-.toast.show {
-  opacity: 1;
-  transform: translateY(-10px);
-}
-
-/* ---------- SPINNER DE CARGA ---------- */
-.loader {
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid var(--color-primary);
-  border-radius: 50%;
-  width: 36px;
-  height: 36px;
-  animation: spin 1s linear infinite;
-  margin: 2em auto;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-/* ===========================
-   🌿 FIN DE SMARTRECIPES - STYLES EXTENDIDO PREMIUM
-   =========================== */
+/* End of file */
